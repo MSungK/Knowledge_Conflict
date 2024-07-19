@@ -118,7 +118,7 @@ class KCDataset(Dataset):
             lambda example: example['w_ct']['input_ids'].shape[0] < filtered
         )
         # self.dataset = self.dataset.filter(
-        #     lambda example: example['w_ct']['input_ids'].shape[0] > 1000
+        #     lambda example: example['w_ct']['input_ids'].shape[0] > 1350
         # )
         print('Filtered')
         print(self.dataset)
@@ -172,7 +172,7 @@ def make_KC_data_module(tokenizer: AutoTokenizer) -> Dict:
     eval_dataset = KCDataset(tokenizer=tokenizer, data_path = eval_data_path, filtered=6000)    
     
     train_data_path = '../datasets/data/MRQANaturalQuestionsTrain-closedbookfiltered-corpus-counterfactual.json'
-    train_dataset = KCDataset(tokenizer=tokenizer, data_path = train_data_path, filtered=1200)    
+    train_dataset = KCDataset(tokenizer=tokenizer, data_path = train_data_path, filtered=1400)    
     
     data_collator = DataCollatorForKCDataset(tokenizer=tokenizer)
     return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)

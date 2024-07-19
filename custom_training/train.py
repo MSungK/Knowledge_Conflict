@@ -1,26 +1,8 @@
-import json
-import io
-import os
-import transformers
-# from llama_flash_attn import replace_llama_attn_with_flash_attn
-import copy
 from logging import warning as warn
-from typing import Optional, Dict, Sequence
-import torch
-from torch.utils.data import Dataset
-from os import path as osp
-from trl import DPOTrainer, ORPOTrainer
 from transformers import (
-    Trainer,
     AutoModelForCausalLM,
     AutoTokenizer,
     TrainingArguments,
-)
-from datasets import (
-    load_dataset, 
-    Value, 
-    DatasetDict, 
-    Features,
 )
 from utils import (
     setup_logger,
@@ -70,8 +52,11 @@ if __name__ == '__main__':
     setup_logger(args.output_dir)
     warn(args)
     
+    train_batch = 6
+    eval_batch = 2
+    accumulation = 4
+
     model_name = args.model_name
-    # TODO
     output_dir = args.output_dir
     warn(output_dir)
     
@@ -103,19 +88,19 @@ if __name__ == '__main__':
     
     trainingArgs = TrainingArguments(
         output_dir = output_dir,
-        per_device_train_batch_size = 4,
-        per_device_eval_batch_size = 2,
-        gradient_accumulation_steps = 4,
+        per_device_train_batch_size = train_batch, # TODO
+        per_device_eval_batch_size = eval_batch,
+        gradient_accumulation_steps = accumulation,
         gradient_checkpointing=True,
         # auto_find_batch_size=True,
         
         optim = "adamw_hf",
-        save_steps = 200,
-        eval_steps = 200,
-        logging_steps = 4,
-        max_grad_norm = 0.3,  # for gradient clipping
-        num_train_epochs=1,
-        # max_steps = 90000,  # epoch? or step? -> num_train_epochs...
+        save_steps = 180,
+        eval_steps = 180,
+        logging_steps = accumulation,
+        max_grad_norm = 0.7,  # for gradient clipping
+        # num_train_epochs=1,
+        max_steps = len(data_module['train_dataset'])//train_batch,  # epoch? or step? -> num_train_epochs...
         evaluation_strategy="steps", # epoch? or steps?
         save_strategy='steps',
         learning_rate=args.lr,
