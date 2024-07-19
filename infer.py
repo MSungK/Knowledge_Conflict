@@ -1,11 +1,13 @@
 import os
 import numpy as np
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import argparse
 import json
 from dschat.utils.utils import load_hf_tokenizer
 from dschat.utils.data.raw_datasets import MRQANaturalQuestionsDataset, ConflictQADataset
+from peft.config import PeftConfigMixin
+from peft import PeftModel
 
 
 parser = argparse.ArgumentParser()
@@ -13,11 +15,13 @@ parser.add_argument(
     '--model_name_or_path', type=str, required=True,
     help="Path to the model checkpoint or its name from huggingface.co/models")
 parser.add_argument(
+    '--adapter_path', type=str, required=True)
+parser.add_argument(
     '--data_path', type=str, required=True,
     help="Name or path of the data to be inferred.")
 parser.add_argument(
     '--output_file',
-    type=str, default=None,
+    type=str, required=True,
     help="Path of the output file.")
 parser.add_argument(
     '--device',
@@ -64,7 +68,10 @@ if __name__ == '__main__':
     assert args.num_shards > 0 and args.shard_id < args.num_shards
     shard_indices = np.array_split(np.arange(len(dataset)), args.num_shards)[args.shard_id]
     dataset = dataset.select(shard_indices)
-
+    print(dataset[0])
+    
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
+    '''
     # load_hf_tokenizer will get the correct tokenizer and set padding tokens based on the model family
     args.end_of_conversation_token = "<|endoftext|>"
     additional_special_tokens = args.end_of_conversation_token if args.add_eot_token else None
@@ -76,28 +83,27 @@ if __name__ == '__main__':
     model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path,
                                                  device_map="auto" if args.device == "cuda" else args.device,
                                                  torch_dtype="auto", use_flash_attention_2=use_flash_attention_2)
+    '''
+    model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, device_map=args.device)
+    base_path="custom_training/results/Llama-2-7b-chat-hf"
+    model = PeftModel.from_pretrained(model, os.path.join(base_path, f'checkpoint-{args.adapter_path}'))
+    model = model.merge_and_unload()
     model.eval()
-    if args.device == "cpu":
-        model = model.float()
     print("Load model successfully")
     
-    if args.output_file is None:
-        args.output_file = os.path.join("outputs", args.data_path.split("/")[-1].split(".")[0],
-                                        args.model_name_or_path.strip("/").split("/")[-2],
-                                        args.model_name_or_path.strip("/").split("/")[-1] + ".json")
     os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
 
     with open(args.output_file, "w") as f:
         for sample in tqdm(dataset):
             prompt = sample["text"]
-
+            
             inputs = tokenizer(
                 prompt,
                 add_special_tokens=False,
                 return_tensors="pt"
             )
             generation_output = model.generate(
-                input_ids = inputs["input_ids"].to(args.device), 
+                input_ids = inputs["input_ids"].to(model.device), 
                 **generation_config
             )[0]
 
