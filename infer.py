@@ -17,6 +17,8 @@ parser.add_argument(
 parser.add_argument(
     '--adapter_path', type=str, required=True)
 parser.add_argument(
+    '--checkpoint', type=str, required=True)
+parser.add_argument(
     '--data_path', type=str, required=True,
     help="Name or path of the data to be inferred.")
 parser.add_argument(
@@ -85,8 +87,9 @@ if __name__ == '__main__':
                                                  torch_dtype="auto", use_flash_attention_2=use_flash_attention_2)
     '''
     model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, device_map=args.device)
-    base_path="custom_training/results/Llama-2-7b-chat-hf"
-    model = PeftModel.from_pretrained(model, os.path.join(base_path, f'checkpoint-{args.adapter_path}'))
+    base_path="custom_training"
+    
+    model = PeftModel.from_pretrained(model, os.path.join(base_path, args.adapter_path, f'checkpoint-{args.checkpoint}'))
     model = model.merge_and_unload()
     model.eval()
     print("Load model successfully")
