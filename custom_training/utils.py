@@ -3,7 +3,7 @@ import logging
 
 def setup_logger(log_path):
     logging.basicConfig(
-        level=logging.WARNING,
+        level=logging.INFO,
         format="%(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s", datefmt="%H:%M:%S",
         handlers=[logging.StreamHandler(), logging.FileHandler(f'logs/{log_path}')])
     
