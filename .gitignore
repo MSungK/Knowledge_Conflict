@@ -154,3 +154,4 @@ FAIL_Only_ODDS/
 datasets/
 custom_training/1e-4
 custom_training/logs
+FAIL*
