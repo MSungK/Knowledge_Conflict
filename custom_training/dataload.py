@@ -103,17 +103,6 @@ class KCDataset(Dataset):
         self.dataset.set_format(type='pt')
         print(self.dataset)
         
-
-        # # TODO
-        # len_list = list()
-        # for i in self.dataset:
-        #     dat = i['w_ct']['input_ids'].shape[0]
-        #     len_list.append(dat)
-        
-        # file_name = data_path.split('/')[-1]
-        # torch.save(len_list, f'{file_name}.pt')
-        # print(f'Saved in {file_name}.pt')
-        
         self.dataset = self.dataset.filter(
             lambda example: example['w_ct']['input_ids'].shape[0] < filtered
         )

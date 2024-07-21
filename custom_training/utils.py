@@ -16,5 +16,7 @@ def arg_parse():
     parser.add_argument('--beta', type=float, required=True)
     parser.add_argument('--lr', type=float, required=True)
     parser.add_argument('--output_dir', type=str, required=True)
+    parser.add_argument('--lora_alpha', type=int, required=True)
+    parser.add_argument('--weight_decay', type=float, required=True)
 
     return parser.parse_args()

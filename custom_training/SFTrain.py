@@ -53,6 +53,8 @@ if __name__ == '__main__':
     train_batch = 4
     eval_batch = 2
     accumulation = 2
+    lora_alpha = args.lora_alpha
+    weight_decay = args.weight_decay
 
     model_name = args.model_name
     output_dir = args.output_dir
@@ -73,7 +75,7 @@ if __name__ == '__main__':
     model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
     lora_config = LoraConfig(
         r=64,
-        lora_alpha=32,
+        lora_alpha=lora_alpha,
         lora_dropout=0.1,
         # target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj'],
         target_modules=['q_proj', 'k_proj'],
@@ -99,7 +101,7 @@ if __name__ == '__main__':
         evaluation_strategy="steps", # epoch? or steps?
         save_strategy='steps',
         learning_rate=args.lr,
-        weight_decay=0.1,
+        weight_decay=weight_decay,
         dataloader_num_workers=16,
         lr_scheduler_type="cosine",
         warmup_steps=100,
