@@ -1,7 +1,7 @@
 base_path="custom_training/results/Llama-2-7b-chat-hf"
 check=817
 
-for adapter_path in 1e-4 1e-5
+for adapter_path in SFT_lr:1e-4 SFT_lr:5e-4
 do
     python infer.py \
         --model_name_or_path meta-llama/Llama-2-7b-chat-hf \

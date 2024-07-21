@@ -52,7 +52,7 @@ if __name__ == '__main__':
     
     train_batch = 4
     eval_batch = 2
-    accumulation = 4
+    accumulation = 2
 
     model_name = args.model_name
     output_dir = args.output_dir
@@ -91,19 +91,18 @@ if __name__ == '__main__':
         gradient_checkpointing=True,
         
         optim = "adamw_hf",
-        save_steps = 200,
+        save_steps = 800,
         eval_steps = 200,
         logging_steps = 1,
         max_grad_norm = 0.7,  # for gradient clipping
         num_train_epochs=1,
-        # max_steps = len(data_module['train_dataset'])//train_batch,  # epoch? or step? -> num_train_epochs...
         evaluation_strategy="steps", # epoch? or steps?
         save_strategy='steps',
         learning_rate=args.lr,
-        # weight_decay=0.1,
+        weight_decay=0.1,
         dataloader_num_workers=16,
         lr_scheduler_type="cosine",
-        warmup_ratio = 0.1,
+        warmup_steps=100,
         remove_unused_columns=False
     )
     # warn(trainingArgs)
