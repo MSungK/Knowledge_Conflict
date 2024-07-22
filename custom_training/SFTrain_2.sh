@@ -11,7 +11,8 @@ lora_alpha=32
 
 for weight_decay in 0.1 0.01
 do
-    output_dir="SFT_alpha:${alpha}_wd:${weight_decay}"
+    output_dir="SFT_alpha:${lora_alpha}_wd:${weight_decay}"
+    echo "Current Working: ${output_dir}"
     python SFTrain.py \
         --model_name ${model_name} \
         --beta 1e-10 \

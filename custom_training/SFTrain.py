@@ -14,9 +14,6 @@ from SFTrainer import (
 from dataload import make_KC_data_module
 from peft import LoraConfig, get_peft_model
 
-# os.environ['NCCL_P2P_DISABLE']='1'
-# os.environ['NCCL_IB_DISABLE']='1'
-
 '''
 llama 다운받고 왜 재사용안돼지? 왜 지랄?
 inference code 뵈야함, prompt template 바꿔야함
@@ -51,7 +48,7 @@ if __name__ == '__main__':
     # setup_logger(args.output_dir)
     
     train_batch = 4
-    eval_batch = 2
+    eval_batch = 1
     accumulation = 2
     lora_alpha = args.lora_alpha
     weight_decay = args.weight_decay
@@ -93,8 +90,8 @@ if __name__ == '__main__':
         gradient_checkpointing=True,
         
         optim = "adamw_hf",
-        save_steps = 800,
-        eval_steps = 200,
+        save_steps = 400,
+        eval_steps = 400,
         logging_steps = 1,
         max_grad_norm = 0.7,  # for gradient clipping
         num_train_epochs=1,
@@ -116,4 +113,3 @@ if __name__ == '__main__':
         **data_module,
     )
     trainer.train()
-    
