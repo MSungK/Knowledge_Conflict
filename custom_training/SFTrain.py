@@ -47,12 +47,15 @@ if __name__ == '__main__':
     args = arg_parse()
     # setup_logger(args.output_dir)
     
-    train_batch = 4
+    train_batch = 8
     eval_batch = 1
-    accumulation = 2
+    accumulation = 1
+    
+    lr = args.lr
     lora_alpha = args.lora_alpha
     weight_decay = args.weight_decay
-
+    max_grad_norm = args.max_grad_norm
+    
     model_name = args.model_name
     output_dir = args.output_dir
     
@@ -67,13 +70,17 @@ if __name__ == '__main__':
         eval_dataset
         data_collator
     '''
-    data_module = make_KC_data_module(tokenizer)
+
+    if args.grid_search:
+        data_module = make_KC_data_module(tokenizer, grid_search=True)
+    else:
+        data_module = make_KC_data_module(tokenizer, grid_search=False)
 
     model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
     lora_config = LoraConfig(
         r=64,
         lora_alpha=lora_alpha,
-        lora_dropout=0.1,
+        lora_dropout=0.05,
         # target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj'],
         target_modules=['q_proj', 'k_proj'],
         bias='none',
@@ -93,11 +100,11 @@ if __name__ == '__main__':
         save_steps = 400,
         eval_steps = 400,
         logging_steps = 1,
-        max_grad_norm = 0.7,  # for gradient clipping
+        max_grad_norm = max_grad_norm,  # for gradient clipping
         num_train_epochs=1,
         evaluation_strategy="steps", # epoch? or steps?
         save_strategy='steps',
-        learning_rate=args.lr,
+        learning_rate=lr,
         weight_decay=weight_decay,
         dataloader_num_workers=16,
         lr_scheduler_type="cosine",

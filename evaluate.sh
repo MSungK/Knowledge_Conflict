@@ -1,7 +1,7 @@
-base_path="custom_training/results/Llama-2-7b-chat-hf"
-check=817
+base_path="custom_training/grid_search"  # Shoud specify the path in python scirpt(infer.py)
+check=165
 
-for adapter_path in SFT_lr:1e-4 SFT_lr:5e-4
+for adapter_path in SFT_max_grad:0.7_wd:0.01_alpha16  SFT_max_grad:0.7_wd:0.1_alpha64   SFT_max_grad:1.3_wd:0.1_alpha16   SFT_max_grad:1.7_wd:0.01_alpha64SFT_max_grad:0.7_wd:0.01_alpha32  SFT_max_grad:0.7_wd:0.1_alpha8    SFT_max_grad:1.3_wd:0.1_alpha32   SFT_max_grad:1.7_wd:0.01_alpha8SFT_max_grad:0.7_wd:0.01_alpha64  SFT_max_grad:1.3_wd:0.01_alpha16  SFT_max_grad:1.3_wd:0.1_alpha64   SFT_max_grad:1.7_wd:0.1_alpha16SFT_max_grad:0.7_wd:0.01_alpha8   SFT_max_grad:1.3_wd:0.01_alpha32  SFT_max_grad:1.3_wd:0.1_alpha8    SFT_max_grad:1.7_wd:0.1_alpha32SFT_max_grad:0.7_wd:0.1_alpha16   SFT_max_grad:1.3_wd:0.01_alpha64  SFT_max_grad:1.7_wd:0.01_alpha16  SFT_max_grad:1.7_wd:0.1_alpha64SFT_max_grad:0.7_wd:0.1_alpha32   SFT_max_grad:1.3_wd:0.01_alpha8   SFT_max_grad:1.7_wd:0.01_alpha32  SFT_max_grad:1.7_wd:0.1_alpha8
 do
     python infer.py \
         --model_name_or_path meta-llama/Llama-2-7b-chat-hf \

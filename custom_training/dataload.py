@@ -88,10 +88,15 @@ def prompt_fn(example, tokenizer, max_seq_length):
     
     
 class KCDataset(Dataset):
-    def __init__(self, data_path: str, tokenizer: AutoTokenizer, filtered: int):
+    def __init__(self, data_path: str, tokenizer: AutoTokenizer, filtered: int, grid_search: bool=False):
         super(KCDataset, self).__init__()
         warn('Loading Data')
         self.dataset = load_dataset("json", data_files=data_path)['train']
+        if grid_search:
+            from random import sample
+            index_list = sample(range(len(self.dataset)), len(self.dataset)//10)
+            self.dataset = self.dataset.select(index_list)
+            print(self.dataset[0])
         self.dataset = self.dataset.map(
             function=partial(prompt_fn, tokenizer=tokenizer, max_seq_length=4096), # TODO max_seq_length control
             batched=False,
@@ -157,12 +162,10 @@ class DataCollatorForKCDataset(object):
         )
         
 
-def make_KC_data_module(tokenizer: AutoTokenizer) -> Dict:
+def make_KC_data_module(tokenizer: AutoTokenizer, grid_search=False) -> Dict:
     eval_data_path = '../datasets/data/MRQANaturalQuestionsDev-closedbookfiltered-corpus-counterfactual.json'
-    eval_dataset = KCDataset(tokenizer=tokenizer, data_path = eval_data_path, filtered=6000)    
-    
+    eval_dataset = KCDataset(tokenizer=tokenizer, data_path = eval_data_path, filtered=6000, grid_search=grid_search)    
     train_data_path = '../datasets/data/MRQANaturalQuestionsTrain-closedbookfiltered-corpus-counterfactual.json'
-    train_dataset = KCDataset(tokenizer=tokenizer, data_path = train_data_path, filtered=1200)    
-    
+    train_dataset = KCDataset(tokenizer=tokenizer, data_path = train_data_path, filtered=1200, grid_search=grid_search)    
     data_collator = DataCollatorForKCDataset(tokenizer=tokenizer)
     return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)

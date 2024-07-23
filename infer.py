@@ -87,7 +87,7 @@ if __name__ == '__main__':
                                                  torch_dtype="auto", use_flash_attention_2=use_flash_attention_2)
     '''
     model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, device_map=args.device)
-    base_path="custom_training"
+    base_path="custom_training/grid_search"
     
     model = PeftModel.from_pretrained(model, os.path.join(base_path, args.adapter_path, f'checkpoint-{args.checkpoint}'))
     model = model.merge_and_unload()
