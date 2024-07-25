@@ -160,7 +160,6 @@ class DataCollatorForKCDataset(object):
             w_ct=w_ct,
             wt_ct=wt_ct
         )
-        
 
 def make_KC_data_module(tokenizer: AutoTokenizer, grid_search=False) -> Dict:
     eval_data_path = '../datasets/data/MRQANaturalQuestionsDev-closedbookfiltered-corpus-counterfactual.json'

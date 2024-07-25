@@ -5,12 +5,11 @@ export WANDB_DISABLED=true
 # export CUDA_VISIBLE_DEVICES="0,1,2,3"
 set -e
 
-model_name="meta-llama/Llama-2-7b-chat-hf"
-lr=5e-4
+model_name="meta-llama/Llama-2-7b-hf"
 lora_alpha=16
-max_grad_norm=0.7
+max_grad_norm=3.0
 weight_decay=0.01
-max_grad_norm=0.7
+lr=5e-4
 
 output_dir="SFT/"
 echo "Current Working: ${output_dir}"

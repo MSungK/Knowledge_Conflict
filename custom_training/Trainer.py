@@ -381,20 +381,6 @@ class KCTrainer(Trainer):
             **model_kwargs,
         )
         wt_ct_logits = wt_ct_outputs.logits
-        
-        w_ct_logps, w_ct_size_completion = self.get_batch_logps(
-            w_ct_logits,
-            w_ct_labels,
-            is_encoder_decoder=self.is_encoder_decoder,
-        )
-        w_ct_logps = w_ct_logps / w_ct_size_completion
-        
-        wt_ct_logps, wt_ct_size_completion = self.get_batch_logps(
-            wt_ct_logits,
-            wt_ct_labels,
-            is_encoder_decoder=self.is_encoder_decoder,
-        )
-        wt_ct_logps = wt_ct_logps / wt_ct_size_completion
 
         def cross_entropy_loss(logits, labels):
             if not self.is_encoder_decoder:
@@ -411,42 +397,32 @@ class KCTrainer(Trainer):
             return loss
 
         labels = w_ct_labels.clone()
-        nll_loss = cross_entropy_loss(w_ct_logits, labels)    
-
+        nll_loss = cross_entropy_loss(w_ct_logits, labels)
+        
+        def negative_ce(logits, labels):
+            if not self.is_encoder_decoder:
+                # Shift so that tokens < n predict n
+                logits = logits[..., :-1, :].contiguous()
+                labels = labels[..., 1:].contiguous()
+            # TODO
+            # warn(f'logits.shape: {logits.shape}') torch.Size([8, 43, 32000])
+            logits = logits.view(-1, logits.shape[-1]) # torch.Size([344, 32000])
+            # labels = labels.to(logits.device) torch.Size([8, 43])
+            labels = labels.view(-1)
+            labels = labels.to(logits.device) # torch.Size([344])
+            softmax = nn.Softmax(dim=-1)
+            probs = softmax(logits)
+            probs_at_labels = probs[torch.arange(probs.size(0)), labels]
+            probs_at_labels = 1 - probs_at_labels
+            loss = -torch.sum(torch.log(probs_at_labels)) / probs_at_labels.size(0)
+            return loss
+            
+        negative_nll_loss = negative_ce(wt_ct_logits, wt_ct_labels.clone())
+        
         return {
-            "w_ct_logps": w_ct_logps, 
-            "wt_ct_logps": wt_ct_logps, 
-            "nll_loss": nll_loss
+            "nll_loss": nll_loss,
+            "negative_nll_loss": negative_nll_loss
             }
-
-    def odds_ratio_loss(
-        self,
-        policy_chosen_logps: torch.FloatTensor,
-        policy_rejected_logps: torch.FloatTensor,
-    ) -> torch.FloatTensor:
-        """Compute ORPO's odds ratio (OR) loss for a batch of policy and reference model log probabilities.
-
-        Args:
-            policy_chosen_logps: Log probabilities of the policy model for the chosen responses. Shape: (batch_size,)
-            policy_rejected_logps: Log probabilities of the policy model for the rejected responses. Shape: (batch_size,)
-
-        Returns:
-            A tuple of three tensors: (losses, chosen_rewards, rejected_rewards).
-            The losses tensor contains the ORPO loss for each example in the batch.
-            The chosen_rewards and rejected_rewards tensors contain the rewards for the chosen and rejected responses, respectively.
-            The log odds ratio of the chosen responses over the rejected responses ratio for logging purposes.
-            The `log(sigmoid(log_odds_chosen))` for logging purposes.
-        """
-
-        # Derived from Eqs. (4) and (7) from https://arxiv.org/abs/2403.07691 by using log identities and exp(log(P(y|x)) = P(y|x)
-        log_odds = (policy_chosen_logps - policy_rejected_logps) - (
-            torch.log1p(-torch.exp(policy_chosen_logps)) - torch.log1p(-torch.exp(policy_rejected_logps))
-        )
-        sig_ratio = F.sigmoid(log_odds)
-        ratio = torch.log(sig_ratio)
-        losses = ratio
-
-        return losses
     
     def get_batch_loss_metrics(
         self,
@@ -458,39 +434,14 @@ class KCTrainer(Trainer):
         metrics = {}
 
         forward_output = self.concatenated_forward(model, batch)
-        w_ct_logps = forward_output['w_ct_logps']
-        wt_ct_logps = forward_output['wt_ct_logps']
         nll_loss = forward_output['nll_loss']
+        negative_nll_loss = forward_output['negative_nll_loss']
         
-        # TODO
-        '''
-        odds_ratio_losses = self.odds_ratio_loss(
-            w_ct_logps, wt_ct_logps
-        )
-        
-        warn(torch.exp(w_ct_logps).mean())
-        warn(torch.exp(wt_ct_logps).mean())
-        warn(torch.exp(w_ct_logps).mean() - torch.exp(wt_ct_logps).mean())
-        
-        warn(torch.sigmoid(w_ct_logps).mean())
-        warn(torch.sigmoid(wt_ct_logps).mean())
-        warn(torch.sigmoid(w_ct_logps).mean() - torch.sigmoid(wt_ct_logps).mean())
-        
-        warn(torch.log(torch.sigmoid(w_ct_logps)).mean())
-        warn(torch.log(torch.sigmoid(wt_ct_logps)).mean())
-        warn(torch.log(torch.sigmoid(w_ct_logps)).mean() - torch.log(torch.sigmoid(wt_ct_logps)).mean())
-        warn(-torch.log(1-torch.exp(w_ct_logps)).mean())
-        warn(-torch.log(1-torch.exp(wt_ct_logps)).mean())
-        warn(-torch.log(1-torch.exp(w_ct_logps)).mean() + torch.log(1-torch.exp(wt_ct_logps)).mean())
-        warn(-torch.log(1-0.9))
-        exit()
-        '''
-        loss = nll_loss - self.beta * torch.log(1-torch.exp(wt_ct_logps)).mean()
+        loss = nll_loss + self.beta*negative_nll_loss
         
         prefix = "eval_" if train_eval == "eval" else ""
-        metrics[f"{prefix}logps/w_ct_logps"] = w_ct_logps.detach().mean().cpu()
-        metrics[f"{prefix}logps/wt_ct_logps"] = wt_ct_logps.detach().mean().cpu()
         metrics[f"{prefix}nll_loss"] = nll_loss.detach().mean().cpu()
+        metrics[f"{prefix}negative_nll_loss"] = negative_nll_loss.detach().mean().cpu()
         metrics[f"{prefix}loss"] = loss.detach().mean().cpu()
         
         return loss, metrics

@@ -17,6 +17,8 @@ parser.add_argument(
 parser.add_argument(
     '--adapter_path', type=str, required=True)
 parser.add_argument(
+    '--base_path', type=str, required=True)
+parser.add_argument(
     '--checkpoint', type=str, required=True)
 parser.add_argument(
     '--data_path', type=str, required=True,
@@ -73,6 +75,9 @@ if __name__ == '__main__':
     print(dataset[0])
     
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
+    if tokenizer.pad_token_id == None:
+        tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.pad_token_id = tokenizer.eos_token_id
     '''
     # load_hf_tokenizer will get the correct tokenizer and set padding tokens based on the model family
     args.end_of_conversation_token = "<|endoftext|>"
@@ -87,7 +92,7 @@ if __name__ == '__main__':
                                                  torch_dtype="auto", use_flash_attention_2=use_flash_attention_2)
     '''
     model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, device_map=args.device)
-    base_path="custom_training/grid_search"
+    base_path=args.base_path
     
     model = PeftModel.from_pretrained(model, os.path.join(base_path, args.adapter_path, f'checkpoint-{args.checkpoint}'))
     model = model.merge_and_unload()
@@ -103,10 +108,13 @@ if __name__ == '__main__':
             inputs = tokenizer(
                 prompt,
                 add_special_tokens=False,
-                return_tensors="pt"
+                return_tensors="pt",
             )
+
             generation_output = model.generate(
-                input_ids = inputs["input_ids"].to(model.device), 
+                input_ids = inputs["input_ids"].to(model.device),
+                attention_mask = inputs["attention_mask"].to(model.device),
+                pad_token_id = tokenizer.eos_token_id,
                 **generation_config
             )[0]
 

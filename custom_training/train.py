@@ -5,8 +5,8 @@ from transformers import (
     TrainingArguments,
 )
 from utils import (
-    setup_logger,
-    arg_parse
+    arg_parse,
+    fix_seed
 )
 from Trainer import (
     KCTrainer
@@ -49,16 +49,19 @@ def print_trainable_parameters(model):
         
 if __name__ == '__main__':
     args = arg_parse()
-    setup_logger(args.output_dir)
-    warn(args)
-    
-    train_batch = 6
-    eval_batch = 2
-    accumulation = 4
+    fix_seed(1234)
 
+    train_batch = 8
+    eval_batch = 1
+    accumulation = 1
+    
+    lr = args.lr
+    lora_alpha = args.lora_alpha
+    weight_decay = args.weight_decay
+    max_grad_norm = args.max_grad_norm
+    
     model_name = args.model_name
     output_dir = args.output_dir
-    warn(output_dir)
     
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     if tokenizer.pad_token_id == None:
@@ -71,14 +74,17 @@ if __name__ == '__main__':
         eval_dataset
         data_collator
     '''
-    data_module = make_KC_data_module(tokenizer)
+
+    if args.grid_search:
+        data_module = make_KC_data_module(tokenizer, grid_search=True)
+    else:
+        data_module = make_KC_data_module(tokenizer, grid_search=False)
 
     model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
     lora_config = LoraConfig(
         r=64,
-        lora_alpha=32,
-        lora_dropout=0.1,
-        # target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj'],
+        lora_alpha=lora_alpha,
+        lora_dropout=0.05,
         target_modules=['q_proj', 'k_proj'],
         bias='none',
         task_type='CAUSAL_LM',
@@ -88,25 +94,24 @@ if __name__ == '__main__':
     
     trainingArgs = TrainingArguments(
         output_dir = output_dir,
-        per_device_train_batch_size = train_batch, # TODO
+        per_device_train_batch_size = train_batch, 
         per_device_eval_batch_size = eval_batch,
         gradient_accumulation_steps = accumulation,
         gradient_checkpointing=True,
-        # auto_find_batch_size=True,
         
         optim = "adamw_hf",
-        save_steps = 180,
-        eval_steps = 180,
+        save_steps = 400,
+        eval_steps = 400,
         logging_steps = 1,
-        max_grad_norm = 0.7,  # for gradient clipping
-        # num_train_epochs=1,
-        max_steps = len(data_module['train_dataset'])//train_batch,  # epoch? or step? -> num_train_epochs...
+        max_grad_norm = max_grad_norm,  # for gradient clipping
+        num_train_epochs=1,
         evaluation_strategy="steps", # epoch? or steps?
         save_strategy='steps',
-        learning_rate=args.lr,
+        learning_rate=lr,
+        weight_decay=weight_decay,
         dataloader_num_workers=16,
         lr_scheduler_type="cosine",
-        warmup_ratio = 0.1,
+        warmup_steps=100,
         remove_unused_columns=False
     )
 

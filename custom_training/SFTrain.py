@@ -5,8 +5,8 @@ from transformers import (
     TrainingArguments,
 )
 from utils import (
-    setup_logger,
-    arg_parse
+    arg_parse,
+    fix_seed
 )
 from SFTrainer import (
     SFTrainer
@@ -14,19 +14,6 @@ from SFTrainer import (
 from dataload import make_KC_data_module
 from peft import LoraConfig, get_peft_model
 
-'''
-llama 다운받고 왜 재사용안돼지? 왜 지랄?
-inference code 뵈야함, prompt template 바꿔야함
-
-데이터 강제 filtering 함 24GB 2개 부족
-
-Hyper-Parameter Tuning -> Grid Search
-    - baseline LR, LoRA Setting
-
-tokenizer padding side 찍어보기
-
-model name -> vicuna, llama2-chat
-'''
 
 def print_trainable_parameters(model):
     """
@@ -41,12 +28,12 @@ def print_trainable_parameters(model):
     print(
         f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param}"
     )
-        
-        
+
+
 if __name__ == '__main__':
     args = arg_parse()
-    # setup_logger(args.output_dir)
-    
+    fix_seed(1234)
+
     train_batch = 8
     eval_batch = 1
     accumulation = 1
@@ -81,7 +68,6 @@ if __name__ == '__main__':
         r=64,
         lora_alpha=lora_alpha,
         lora_dropout=0.05,
-        # target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj'],
         target_modules=['q_proj', 'k_proj'],
         bias='none',
         task_type='CAUSAL_LM',
