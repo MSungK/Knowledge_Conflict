@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
     train_batch = 8
     eval_batch = 1
-    accumulation = 1
+    accumulation = 2
     
     lr = args.lr
     lora_alpha = args.lora_alpha

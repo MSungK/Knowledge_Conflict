@@ -1,6 +1,6 @@
 base_path="custom_training"  # Shoud specify the path in python scirpt(infer.py)
 check=1635
-adapter_path=SFT
+adapter_path=KC
 
 
 python infer.py \

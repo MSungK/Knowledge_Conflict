@@ -1,5 +1,5 @@
 import logging
-
+from transformers import set_seed
 
 def setup_logger(log_path):
     logging.basicConfig(
@@ -35,3 +35,4 @@ def fix_seed(seed=1234):
     torch.backends.cudnn.benchmark = False
     np.random.seed(seed)
     random.seed(seed)
+    set_seed(seed)

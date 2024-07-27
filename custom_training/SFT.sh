@@ -7,7 +7,7 @@ set -e
 
 model_name="meta-llama/Llama-2-7b-hf"
 lora_alpha=16
-max_grad_norm=3.0
+max_grad_norm=0.7
 weight_decay=0.01
 lr=5e-4
 

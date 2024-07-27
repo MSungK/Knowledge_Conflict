@@ -350,7 +350,7 @@ class KCTrainer(Trainer):
         labels[labels == label_pad_token_id] = 0
         
         per_token_logps = torch.gather(logits.log_softmax(-1), dim=2, index=labels.unsqueeze(2)).squeeze(2)
-        return (per_token_logps * loss_mask).sum(-1), loss_mask.sum(-1)
+        return (per_token_logps * loss_mask).sum(-1)
 
     def concatenated_forward(
         self, model: nn.Module, batch: Dict[str, Union[List, torch.LongTensor]]
@@ -381,6 +381,11 @@ class KCTrainer(Trainer):
             **model_kwargs,
         )
         wt_ct_logits = wt_ct_outputs.logits
+        
+        w_ct_logps = self.get_batch_logps(w_ct_logits, w_ct_labels.clone())
+        wt_ct_logps = self.get_batch_logps(wt_ct_logits, wt_ct_labels.clone())
+        
+        condition_loss = -torch.log(F.sigmoid(w_ct_logps - wt_ct_logps)).mean()
 
         def cross_entropy_loss(logits, labels):
             if not self.is_encoder_decoder:
@@ -399,29 +404,11 @@ class KCTrainer(Trainer):
         labels = w_ct_labels.clone()
         nll_loss = cross_entropy_loss(w_ct_logits, labels)
         
-        def negative_ce(logits, labels):
-            if not self.is_encoder_decoder:
-                # Shift so that tokens < n predict n
-                logits = logits[..., :-1, :].contiguous()
-                labels = labels[..., 1:].contiguous()
-            # TODO
-            # warn(f'logits.shape: {logits.shape}') torch.Size([8, 43, 32000])
-            logits = logits.view(-1, logits.shape[-1]) # torch.Size([344, 32000])
-            # labels = labels.to(logits.device) torch.Size([8, 43])
-            labels = labels.view(-1)
-            labels = labels.to(logits.device) # torch.Size([344])
-            softmax = nn.Softmax(dim=-1)
-            probs = softmax(logits)
-            probs_at_labels = probs[torch.arange(probs.size(0)), labels]
-            probs_at_labels = 1 - probs_at_labels
-            loss = -torch.sum(torch.log(probs_at_labels)) / probs_at_labels.size(0)
-            return loss
-            
-        negative_nll_loss = negative_ce(wt_ct_logits, wt_ct_labels.clone())
+        # TODO
         
         return {
             "nll_loss": nll_loss,
-            "negative_nll_loss": negative_nll_loss
+            "condition_loss": condition_loss
             }
     
     def get_batch_loss_metrics(
@@ -435,13 +422,13 @@ class KCTrainer(Trainer):
 
         forward_output = self.concatenated_forward(model, batch)
         nll_loss = forward_output['nll_loss']
-        negative_nll_loss = forward_output['negative_nll_loss']
+        condition_loss = forward_output['condition_loss']
         
-        loss = nll_loss + self.beta*negative_nll_loss
+        loss = nll_loss + self.beta*condition_loss
         
         prefix = "eval_" if train_eval == "eval" else ""
         metrics[f"{prefix}nll_loss"] = nll_loss.detach().mean().cpu()
-        metrics[f"{prefix}negative_nll_loss"] = negative_nll_loss.detach().mean().cpu()
+        metrics[f"{prefix}condition_loss"] = condition_loss.detach().mean().cpu()
         metrics[f"{prefix}loss"] = loss.detach().mean().cpu()
         
         return loss, metrics
@@ -467,7 +454,7 @@ class KCTrainer(Trainer):
             return (loss, metrics)
         return loss
 
-    # TODO
+    # TODO, eval_metric 안쓸거면 상관없음
     def prediction_step(
         self,
         model: Union[PreTrainedModel, nn.Module],
