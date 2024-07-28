@@ -32,11 +32,11 @@ def print_trainable_parameters(model):
 
 if __name__ == '__main__':
     args = arg_parse()
-    fix_seed(1234)
+    fix_seed(1111)
 
     train_batch = 8
     eval_batch = 1
-    accumulation = 2
+    accumulation = 1
     
     lr = args.lr
     lora_alpha = args.lora_alpha

@@ -6,7 +6,7 @@ export WANDB_DISABLED=true
 set -e
 
 model_name="meta-llama/Llama-2-7b-hf"
-lora_alpha=16
+lora_alpha=32
 max_grad_norm=0.7
 weight_decay=0.01
 lr=5e-4
@@ -24,11 +24,11 @@ python train.py \
     --max_grad_norm ${max_grad_norm} 
 
 
-model_name="meta-llama/Llama-2-7b-hf"
-lora_alpha=16
-max_grad_norm=0.7
-weight_decay=0.01
-lr=5e-4
+# model_name="meta-llama/Llama-2-7b-hf"
+# lora_alpha=16
+# max_grad_norm=0.7
+# weight_decay=0.01
+# lr=5e-4
 
 output_dir="SFT/"
 echo "Current Working: ${output_dir}"
